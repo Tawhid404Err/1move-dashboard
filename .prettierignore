@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist
+build
+.next
+out
+
+# Cache
+.cache
+.parcel-cache
+.vercel
+.turbo
+
+# Misc
+coverage
+.DS_Store
+*.log
+

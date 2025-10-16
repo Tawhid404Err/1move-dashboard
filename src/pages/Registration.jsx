@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import apiRequest from '../utils/api'
 
 function Registration() {
   const [formData, setFormData] = useState({
@@ -98,11 +99,10 @@ function Registration() {
       console.log('Submitting form data:', formData)
 
       const linkCode = import.meta.env.VITE_LINK_CODE || 'ADMIN-SECURE-LINK-2024'
-      const response = await fetch(`/api/register/${linkCode}`, {
+      const response = await apiRequest(`register/${linkCode}`, {
         method: 'POST',
         mode: 'cors',
         headers: {
-          'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify(formData),

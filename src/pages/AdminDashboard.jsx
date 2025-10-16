@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import apiRequest from '../utils/api'
 
 function AdminDashboard() {
   const navigate = useNavigate()
@@ -44,11 +45,10 @@ function AdminDashboard() {
       }
 
       // API expects "Bearer Bearer <token>" format (token already has "Bearer " prefix)
-      const response = await fetch('/api/admin/affiliates', {
+      const response = await apiRequest('admin/affiliates', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       })
 
@@ -85,11 +85,10 @@ function AdminDashboard() {
       }
 
       // API expects "Bearer Bearer <token>" format (token already has "Bearer " prefix)
-      const response = await fetch('/api/admin/pending-requests', {
+      const response = await apiRequest('admin/pending-requests', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       })
 
@@ -127,11 +126,10 @@ function AdminDashboard() {
         throw new Error('No authentication token found')
       }
 
-      const response = await fetch('/api/admin/review-request', {
+      const response = await apiRequest('admin/review-request', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           request_id: reviewModal.request.id,

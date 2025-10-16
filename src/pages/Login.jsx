@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
+import apiRequest from '../utils/api'
 
 function Login() {
   const { role } = useParams()
@@ -54,11 +55,8 @@ function Login() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await apiRequest('login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,

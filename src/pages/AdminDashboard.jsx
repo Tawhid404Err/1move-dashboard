@@ -180,19 +180,29 @@ function AdminDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a]">
+    <div className="flex h-screen overflow-hidden bg-[#0a0a0a]">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } flex flex-col border-r border-[#1f1f1f] bg-[#0f0f0f] transition-all duration-300`}
+        className={`fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-[#1f1f1f] bg-[#0f0f0f] transition-all duration-300 lg:relative ${
+          sidebarOpen ? 'translate-x-0 lg:w-64' : '-translate-x-full lg:w-20 lg:translate-x-0'
+        }`}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-[#1f1f1f] px-6">
-          {sidebarOpen && <img src="/logo.png" alt="1Move Logo" className="h-10 object-contain" />}
+        <div className="flex h-16 items-center justify-between border-b border-[#1f1f1f] px-4 sm:px-6">
+          {sidebarOpen && (
+            <img src="/logo.png" alt="1Move Logo" className="h-8 object-contain sm:h-10" />
+          )}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white lg:block"
           >
             <svg
               width="20"
@@ -337,11 +347,34 @@ function AdminDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
+        {/* Mobile Header Bar */}
+        <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#1f1f1f] bg-[#0a0a0a] px-4 lg:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <img src="/logo.png" alt="1Move Logo" className="h-8 object-contain" />
+          <div className="w-10" /> {/* Spacer for centering */}
+        </div>
+
         {/* Header */}
-        <header className="sticky top-0 z-10 border-b border-[#1f1f1f] bg-[#0a0a0a]/80 backdrop-blur-sm">
-          <div className="flex h-16 items-center justify-between px-8">
-            <div>
-              <h1 className="text-2xl font-semibold text-white">
+        <header className="sticky top-0 z-10 border-b border-[#1f1f1f] bg-[#0a0a0a]/80 backdrop-blur-sm lg:top-0">
+          <div className="flex h-auto min-h-[4rem] flex-col items-start justify-between gap-3 px-4 py-3 sm:px-6 lg:h-16 lg:flex-row lg:items-center lg:px-8 lg:py-0">
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold text-white sm:text-xl lg:text-2xl">
                 {activeTab === 'affiliates'
                   ? 'Approved Affiliates'
                   : activeTab === 'pending'
@@ -381,7 +414,7 @@ function AdminDashboard() {
         </header>
 
         {/* Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -465,7 +498,7 @@ function AdminDashboard() {
             </div>
           ) : activeTab === 'affiliates' ? (
             <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full">
                   <thead className="border-b border-[#1f1f1f] bg-[#0f0f0f]">
                     <tr>
@@ -521,6 +554,44 @@ function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="space-y-4 p-4 lg:hidden">
+                {affiliates.map((affiliate, index) => (
+                  <div
+                    key={affiliate.id || index}
+                    className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] p-4"
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gold/10 text-sm font-semibold text-gold">
+                        {affiliate.name?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-medium text-white">
+                          {affiliate.name || 'N/A'}
+                        </h3>
+                        <p className="truncate text-sm text-gray-400">{affiliate.email || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Location:</span>
+                        <span className="text-gray-300">{affiliate.location || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Language:</span>
+                        <span className="text-gray-300">{affiliate.language || 'N/A'}</span>
+                      </div>
+                      <div className="pt-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
+                          Approved
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ) : activeTab === 'links' ? (
@@ -594,7 +665,7 @@ function AdminDashboard() {
           ) : (
             /* Pending Requests Table */
             <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
-              <div className="overflow-x-auto">
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full">
                   <thead className="border-b border-[#1f1f1f] bg-[#0f0f0f]">
                     <tr>
@@ -676,6 +747,64 @@ function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View */}
+              <div className="space-y-4 p-4 lg:hidden">
+                {pendingRequests.map((request, index) => (
+                  <div
+                    key={request.id || index}
+                    className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] p-4"
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-sm font-semibold text-orange-400">
+                        {request.name?.charAt(0).toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-medium text-white">{request.name || 'N/A'}</h3>
+                        <p className="truncate text-sm text-gray-400">{request.email || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Location:</span>
+                        <span className="text-gray-300">{request.location || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Language:</span>
+                        <span className="text-gray-300">{request.language || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Date:</span>
+                        <span className="text-gray-300">
+                          {request.created_at
+                            ? new Date(request.created_at).toLocaleDateString()
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-[#1f1f1f] pt-3">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
+                          Pending
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setReviewModal({ request, approve: true })}
+                            className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => setReviewModal({ request, approve: false })}
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -683,8 +812,8 @@ function AdminDashboard() {
 
       {/* Review Modal */}
       {reviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-[#1f1f1f] bg-[#0f0f0f] p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#1f1f1f] bg-[#0f0f0f] p-4 shadow-2xl sm:p-6">
             <div className="mb-4">
               <h3 className="mb-2 text-xl font-semibold text-white">
                 {reviewModal.approve ? 'Approve Request' : 'Reject Request'}

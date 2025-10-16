@@ -91,12 +91,12 @@ function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8">
-      <div className="mb-8 text-center">
-        <img src="/logo.png" alt="1Move Logo" className="h-20 object-contain" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-6 text-center sm:mb-8">
+        <img src="/logo.png" alt="1Move Logo" className="h-16 object-contain sm:h-20" />
       </div>
 
-      <div className="w-full max-w-[440px] rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#121212] px-10 py-10 shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+      <div className="w-full max-w-[440px] rounded-2xl bg-gradient-to-br from-[#1a1a1a] to-[#121212] px-6 py-8 shadow-[0_8px_32px_rgba(0,0,0,0.6)] sm:px-10 sm:py-10">
         {/* Role Toggle Bar */}
         <div className="mb-8">
           <div className="flex gap-2 rounded-lg bg-[#0a0a0a] p-1.5">
@@ -117,11 +117,11 @@ function Login() {
           </div>
         </div>
 
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-[1.75rem] font-semibold leading-snug text-white">
+        <div className="mb-6 text-center sm:mb-8">
+          <h1 className="mb-2 text-xl font-semibold leading-snug text-white sm:text-[1.75rem]">
             Welcome Back
           </h1>
-          <p className="text-sm text-gold">
+          <p className="text-xs text-gold sm:text-sm">
             Login as {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
           </p>
         </div>

@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 function AdminDashboard() {
   const navigate = useNavigate()
   const [affiliates, setAffiliates] = useState([])
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [activeTab, setActiveTab] = useState('affiliates') // 'affiliates' or 'pending'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -18,10 +20,14 @@ function AdminDashboard() {
       return
     }
 
-    // Fetch affiliates data on mount
-    fetchAffiliates()
+    // Fetch data based on active tab
+    if (activeTab === 'affiliates') {
+      fetchAffiliates()
+    } else {
+      fetchPendingRequests()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [activeTab])
 
   const fetchAffiliates = async () => {
     try {
@@ -54,6 +60,47 @@ function AdminDashboard() {
 
       const data = await response.json()
       setAffiliates(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(err.message)
+      if (err.message.includes('Session expired')) {
+        setTimeout(() => handleLogout(), 2000)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchPendingRequests = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      // API expects "Bearer Bearer <token>" format (token already has "Bearer " prefix)
+      const response = await fetch('/api/admin/pending-requests', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.')
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. You do not have permission to view pending requests.')
+        }
+        throw new Error(`Failed to fetch pending requests (Status: ${response.status})`)
+      }
+
+      const data = await response.json()
+      setPendingRequests(Array.isArray(data) ? data : [])
     } catch (err) {
       setError(err.message)
       if (err.message.includes('Session expired')) {
@@ -105,7 +152,14 @@ function AdminDashboard() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
-          <button className="flex w-full items-center gap-3 rounded-lg bg-gold/10 px-4 py-3 text-gold transition-colors">
+          <button
+            onClick={() => setActiveTab('affiliates')}
+            className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
+              activeTab === 'affiliates'
+                ? 'bg-gold/10 text-gold'
+                : 'text-gray-400 hover:bg-[#1a1a1a] hover:text-white'
+            }`}
+          >
             <svg
               width="20"
               height="20"
@@ -122,7 +176,14 @@ function AdminDashboard() {
             {sidebarOpen && <span className="font-medium">Affiliates</span>}
           </button>
 
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
+              activeTab === 'pending'
+                ? 'bg-gold/10 text-gold'
+                : 'text-gray-400 hover:bg-[#1a1a1a] hover:text-white'
+            }`}
+          >
             <svg
               width="20"
               height="20"
@@ -131,9 +192,10 @@ function AdminDashboard() {
               stroke="currentColor"
               strokeWidth="2"
             >
-              <path d="M12 2v20M2 12h20" />
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
             </svg>
-            {sidebarOpen && <span className="font-medium">Requests</span>}
+            {sidebarOpen && <span className="font-medium">Pending Requests</span>}
           </button>
 
           <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white">
@@ -196,11 +258,17 @@ function AdminDashboard() {
         <header className="sticky top-0 z-10 border-b border-[#1f1f1f] bg-[#0a0a0a]/80 backdrop-blur-sm">
           <div className="flex h-16 items-center justify-between px-8">
             <div>
-              <h1 className="text-2xl font-semibold text-white">Approved Affiliates</h1>
-              <p className="text-sm text-gray-400">Manage and view all approved affiliates</p>
+              <h1 className="text-2xl font-semibold text-white">
+                {activeTab === 'affiliates' ? 'Approved Affiliates' : 'Pending Requests'}
+              </h1>
+              <p className="text-sm text-gray-400">
+                {activeTab === 'affiliates'
+                  ? 'Manage and view all approved affiliates'
+                  : 'Review and approve pending affiliate requests'}
+              </p>
             </div>
             <button
-              onClick={fetchAffiliates}
+              onClick={activeTab === 'affiliates' ? fetchAffiliates : fetchPendingRequests}
               className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20"
             >
               <svg
@@ -246,7 +314,7 @@ function AdminDashboard() {
                 {error}
               </div>
             </div>
-          ) : affiliates.length === 0 ? (
+          ) : activeTab === 'affiliates' && affiliates.length === 0 ? (
             <div className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] py-12 text-center">
               <svg
                 className="mx-auto mb-4 h-16 w-16 text-gray-600"
@@ -264,7 +332,25 @@ function AdminDashboard() {
               <h3 className="mb-2 text-lg font-medium text-white">No affiliates found</h3>
               <p className="text-sm text-gray-400">There are no approved affiliates yet.</p>
             </div>
-          ) : (
+          ) : activeTab === 'pending' && pendingRequests.length === 0 ? (
+            <div className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] py-12 text-center">
+              <svg
+                className="mx-auto mb-4 h-16 w-16 text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <h3 className="mb-2 text-lg font-medium text-white">No pending requests</h3>
+              <p className="text-sm text-gray-400">All affiliate requests have been reviewed.</p>
+            </div>
+          ) : activeTab === 'affiliates' ? (
             <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -316,6 +402,73 @@ function AdminDashboard() {
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
                             <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
                             Approved
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Pending Requests Table */
+            <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b border-[#1f1f1f] bg-[#0f0f0f]">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Name
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Email
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Location
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Language
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Date
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1f1f1f] bg-[#0a0a0a]">
+                    {pendingRequests.map((request, index) => (
+                      <tr
+                        key={request.id || index}
+                        className="transition-colors hover:bg-[#0f0f0f]"
+                      >
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500/10 text-sm font-semibold text-orange-400">
+                              {request.name?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <span className="font-medium text-white">{request.name || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">
+                          {request.email || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">
+                          {request.location || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">
+                          {request.language || 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">
+                          {request.created_at
+                            ? new Date(request.created_at).toLocaleDateString()
+                            : 'N/A'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-400">
+                            <span className="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
+                            Pending
                           </span>
                         </td>
                       </tr>

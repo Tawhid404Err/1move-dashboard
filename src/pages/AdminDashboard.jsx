@@ -5,10 +5,14 @@ function AdminDashboard() {
   const navigate = useNavigate()
   const [affiliates, setAffiliates] = useState([])
   const [pendingRequests, setPendingRequests] = useState([])
-  const [activeTab, setActiveTab] = useState('affiliates') // 'affiliates' or 'pending'
+  const [activeTab, setActiveTab] = useState('affiliates') // 'affiliates' or 'pending' or 'links'
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [reviewModal, setReviewModal] = useState(null) // { request, approve: true/false }
+  const [reviewReason, setReviewReason] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(null) // Track which link was copied
 
   const userEmail = localStorage.getItem('user_email')
 
@@ -21,9 +25,9 @@ function AdminDashboard() {
     }
 
     // Fetch data based on active tab
-    if (activeTab === 'affiliates') {
+    if (activeTab === 'affiliates' || activeTab === 'links') {
       fetchAffiliates()
-    } else {
+    } else if (activeTab === 'pending') {
       fetchPendingRequests()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,6 +112,63 @@ function AdminDashboard() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleReviewRequest = async () => {
+    if (!reviewModal) return
+
+    try {
+      setReviewLoading(true)
+      setError('')
+
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await fetch('/api/admin/review-request', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          request_id: reviewModal.request.id,
+          approve: reviewModal.approve,
+          reason: reviewReason || (reviewModal.approve ? 'Approved' : 'Rejected'),
+        }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.')
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed to review request (Status: ${response.status})`)
+      }
+
+      // Success! Close modal and refresh pending requests
+      setReviewModal(null)
+      setReviewReason('')
+      await fetchPendingRequests()
+    } catch (err) {
+      setError(err.message)
+      if (err.message.includes('Session expired')) {
+        setTimeout(() => handleLogout(), 2000)
+      }
+    } finally {
+      setReviewLoading(false)
+    }
+  }
+
+  const handleCopyLink = async (link) => {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopiedLink(link)
+      setTimeout(() => setCopiedLink(null), 2000) // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy link:', err)
     }
   }
 
@@ -198,6 +259,28 @@ function AdminDashboard() {
             {sidebarOpen && <span className="font-medium">Pending Requests</span>}
           </button>
 
+          <button
+            onClick={() => setActiveTab('links')}
+            className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
+              activeTab === 'links'
+                ? 'bg-gold/10 text-gold'
+                : 'text-gray-400 hover:bg-[#1a1a1a] hover:text-white'
+            }`}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            {sidebarOpen && <span className="font-medium">All Affiliate Links</span>}
+          </button>
+
           <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-gray-400 transition-colors hover:bg-[#1a1a1a] hover:text-white">
             <svg
               width="20"
@@ -259,16 +342,26 @@ function AdminDashboard() {
           <div className="flex h-16 items-center justify-between px-8">
             <div>
               <h1 className="text-2xl font-semibold text-white">
-                {activeTab === 'affiliates' ? 'Approved Affiliates' : 'Pending Requests'}
+                {activeTab === 'affiliates'
+                  ? 'Approved Affiliates'
+                  : activeTab === 'pending'
+                    ? 'Pending Requests'
+                    : 'All Affiliate Links'}
               </h1>
               <p className="text-sm text-gray-400">
                 {activeTab === 'affiliates'
                   ? 'Manage and view all approved affiliates'
-                  : 'Review and approve pending affiliate requests'}
+                  : activeTab === 'pending'
+                    ? 'Review and approve pending affiliate requests'
+                    : 'View and copy all affiliate referral links'}
               </p>
             </div>
             <button
-              onClick={activeTab === 'affiliates' ? fetchAffiliates : fetchPendingRequests}
+              onClick={
+                activeTab === 'affiliates' || activeTab === 'links'
+                  ? fetchAffiliates
+                  : fetchPendingRequests
+              }
               className="flex items-center gap-2 rounded-lg border border-gold/20 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20"
             >
               <svg
@@ -350,6 +443,26 @@ function AdminDashboard() {
               <h3 className="mb-2 text-lg font-medium text-white">No pending requests</h3>
               <p className="text-sm text-gray-400">All affiliate requests have been reviewed.</p>
             </div>
+          ) : activeTab === 'links' && affiliates.length === 0 ? (
+            <div className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] py-12 text-center">
+              <svg
+                className="mx-auto mb-4 h-16 w-16 text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                />
+              </svg>
+              <h3 className="mb-2 text-lg font-medium text-white">No affiliate links found</h3>
+              <p className="text-sm text-gray-400">
+                There are no approved affiliates with links yet.
+              </p>
+            </div>
           ) : activeTab === 'affiliates' ? (
             <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
               <div className="overflow-x-auto">
@@ -410,6 +523,74 @@ function AdminDashboard() {
                 </table>
               </div>
             </div>
+          ) : activeTab === 'links' ? (
+            /* All Affiliate Links View */
+            <div className="space-y-4">
+              {affiliates.map((affiliate, index) => (
+                <div
+                  key={affiliate.id || index}
+                  className="rounded-lg border border-[#1f1f1f] bg-[#0f0f0f] p-6 transition-colors hover:border-gold/20"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-3 flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/10 text-base font-semibold text-gold">
+                          {affiliate.name?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{affiliate.name}</h3>
+                          <p className="text-sm text-gray-400">{affiliate.email}</p>
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-[#252525] bg-[#0a0a0a] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Referral Link
+                            </p>
+                            <p className="break-all text-sm text-gold">{affiliate.unique_link}</p>
+                          </div>
+                          <button
+                            onClick={() => handleCopyLink(affiliate.unique_link)}
+                            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+                              copiedLink === affiliate.unique_link
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gold/10 text-gold hover:bg-gold/20'
+                            }`}
+                            title="Copy link"
+                          >
+                            {copiedLink === affiliate.unique_link ? (
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : (
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             /* Pending Requests Table */
             <div className="overflow-hidden rounded-lg border border-[#1f1f1f]">
@@ -434,6 +615,9 @@ function AdminDashboard() {
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
                         Status
+                      </th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -471,6 +655,22 @@ function AdminDashboard() {
                             Pending
                           </span>
                         </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setReviewModal({ request, approve: true })}
+                              className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => setReviewModal({ request, approve: false })}
+                              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -480,6 +680,97 @@ function AdminDashboard() {
           )}
         </div>
       </main>
+
+      {/* Review Modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#1f1f1f] bg-[#0f0f0f] p-6 shadow-2xl">
+            <div className="mb-4">
+              <h3 className="mb-2 text-xl font-semibold text-white">
+                {reviewModal.approve ? 'Approve Request' : 'Reject Request'}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {reviewModal.approve
+                  ? `Approve ${reviewModal.request.name}'s affiliate application?`
+                  : `Reject ${reviewModal.request.name}'s affiliate application?`}
+              </p>
+            </div>
+
+            {/* Request Details */}
+            <div className="mb-4 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] p-4">
+              <div className="mb-2 flex items-center gap-3">
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
+                    reviewModal.approve
+                      ? 'bg-green-500/10 text-green-400'
+                      : 'bg-red-500/10 text-red-400'
+                  }`}
+                >
+                  {reviewModal.request.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{reviewModal.request.name}</p>
+                  <p className="text-sm text-gray-400">{reviewModal.request.email}</p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Location:</span>
+                  <span className="ml-1 text-gray-300">{reviewModal.request.location}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Language:</span>
+                  <span className="ml-1 text-gray-300">{reviewModal.request.language}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Reason Input */}
+            <div className="mb-6">
+              <label htmlFor="reason" className="mb-2 block text-sm font-medium text-white">
+                Reason {reviewModal.approve ? '(Optional)' : '(Required)'}
+              </label>
+              <textarea
+                id="reason"
+                value={reviewReason}
+                onChange={(e) => setReviewReason(e.target.value)}
+                placeholder={
+                  reviewModal.approve
+                    ? 'Add a note (optional)...'
+                    : 'Please provide a reason for rejection...'
+                }
+                rows={3}
+                className="w-full rounded-lg border border-[#333333] bg-[#252525] px-4 py-3 text-sm text-white transition-all duration-300 placeholder:text-[#666666] focus:border-gold focus:bg-[#2a2a2a] focus:shadow-[0_0_0_3px_rgba(196,165,114,0.1)] focus:outline-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setReviewModal(null)
+                  setReviewReason('')
+                }}
+                disabled={reviewLoading}
+                className="flex-1 rounded-lg border border-[#333333] bg-[#1a1a1a] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#252525] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReviewRequest}
+                disabled={reviewLoading || (!reviewModal.approve && !reviewReason.trim())}
+                className={`flex-1 rounded-lg px-4 py-3 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  reviewModal.approve
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {reviewLoading ? 'Processing...' : reviewModal.approve ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

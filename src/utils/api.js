@@ -2,12 +2,12 @@
 
 // Get the API base URL based on environment
 const getApiBaseUrl = () => {
-  // In production, use the environment variable or default to the production API
+  // In production, use our Vercel API proxy to avoid CORS issues
   if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_BASE_URL || 'https://api.domainkini.com'
+    return '/api/proxy'
   }
   
-  // In development, use the proxy (requests go to /api which is proxied)
+  // In development, use the Vite proxy (requests go to /api which is proxied)
   return '/api'
 }
 
@@ -23,15 +23,24 @@ export const apiRequest = async (endpoint, options = {}) => {
   // Remove leading slash if present to avoid double slashes
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint
   
-  const url = `${API_BASE_URL}/${cleanEndpoint}`
+  let url
+  let requestOptions = { ...options }
+  
+  if (import.meta.env.PROD) {
+    // In production, use our Vercel API proxy
+    url = `${API_BASE_URL}?endpoint=${encodeURIComponent(cleanEndpoint)}`
+  } else {
+    // In development, use the Vite proxy
+    url = `${API_BASE_URL}/${cleanEndpoint}`
+  }
   
   console.log('[API Request]', options.method || 'GET', url)
   
   return fetch(url, {
-    ...options,
+    ...requestOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...requestOptions.headers,
     },
   })
 }

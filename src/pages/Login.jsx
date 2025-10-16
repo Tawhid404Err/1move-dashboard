@@ -11,6 +11,8 @@ function Login() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const roles = [
     { id: 'admin', label: 'Admin' },
@@ -39,11 +41,53 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
 
-    // Placeholder - API integration will be added later
-    alert(
-      `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} login functionality will be implemented soon.\n\nForm data:\nEmail: ${formData.email}\nRemember Me: ${rememberMe}`
-    )
+    // Only Admin login is integrated
+    if (selectedRole !== 'admin') {
+      alert(
+        `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} login will be available soon.`
+      )
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Invalid email or password')
+      }
+
+      // Success! Store the token and redirect
+      // API expects "Bearer Bearer <token>" format, so add "Bearer " prefix to token
+      const tokenToStore = data.access_token.startsWith('Bearer')
+        ? data.access_token
+        : `Bearer ${data.access_token}`
+
+      localStorage.setItem('access_token', tokenToStore)
+      localStorage.setItem('token_type', data.token_type)
+      localStorage.setItem('user_email', formData.email)
+
+      // Redirect to admin dashboard
+      navigate('/admin/dashboard')
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -83,6 +127,13 @@ function Login() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Error Message */}
+          {error && (
+            <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
           <div className="mb-5">
             <label htmlFor="email" className="mb-2 block text-sm font-medium text-white">
               Email address
@@ -166,9 +217,10 @@ function Login() {
 
           <button
             type="submit"
-            className="mt-2 w-full rounded-lg bg-gray-200 px-4 py-4 text-base font-semibold text-[#1a1a1a] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_4px_12px_rgba(232,232,232,0.2)] active:translate-y-0"
+            disabled={loading}
+            className="mt-2 w-full rounded-lg bg-gray-200 px-4 py-4 text-base font-semibold text-[#1a1a1a] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_4px_12px_rgba(232,232,232,0.2)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

@@ -2,12 +2,9 @@
 
 // Get the API base URL based on environment
 const getApiBaseUrl = () => {
-  // In production, use the environment variable or default to the production API
-  if (import.meta.env.PROD) {
-    return import.meta.env.VITE_API_BASE_URL || 'https://api.domainkini.com'
-  }
-  
-  // In development, use the proxy (requests go to /api which is proxied)
+  // Use /api in both development and production
+  // In development: Vite proxy handles it (vite.config.js)
+  // In production: Vercel rewrites handle it (vercel.json)
   return '/api'
 }
 

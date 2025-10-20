@@ -44,7 +44,7 @@ function AdminDashboard() {
         throw new Error('No authentication token found')
       }
 
-      // API expects "Bearer Bearer <token>" format (token already has "Bearer " prefix)
+      // Add Bearer prefix to raw token
       const response = await apiRequest('admin/affiliates', {
         method: 'GET',
         headers: {
@@ -84,7 +84,7 @@ function AdminDashboard() {
         throw new Error('No authentication token found')
       }
 
-      // API expects "Bearer Bearer <token>" format (token already has "Bearer " prefix)
+      // Add Bearer prefix to raw token
       const response = await apiRequest('admin/pending-requests', {
         method: 'GET',
         headers: {

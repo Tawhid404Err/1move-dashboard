@@ -69,13 +69,13 @@ function Login() {
         throw new Error(data.detail || 'Invalid email or password')
       }
 
-      // Success! Store the token and redirect
-      // API expects "Bearer Bearer <token>" format, so add "Bearer " prefix to token
-      const tokenToStore = data.access_token.startsWith('Bearer')
-        ? data.access_token
-        : `Bearer ${data.access_token}`
+      // Success! Store the raw token (Bearer prefix will be added when making requests)
+      // Remove "Bearer " prefix if it exists in the token
+      const rawToken = data.access_token.startsWith('Bearer ')
+        ? data.access_token.substring(7)
+        : data.access_token
 
-      localStorage.setItem('access_token', tokenToStore)
+      localStorage.setItem('access_token', rawToken)
       localStorage.setItem('token_type', data.token_type)
       localStorage.setItem('user_email', formData.email)
 

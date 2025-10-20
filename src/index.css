@@ -28,4 +28,36 @@
   #root {
     @apply min-h-screen w-full;
   }
+
+  /* Custom Scrollbar Styling - Dark Theme with Gold Accents */
+  * {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #c4a572 #1a1a1a;
+  }
+
+  /* Webkit browsers (Chrome, Safari, Edge) */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #c4a572;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #d4b582;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: #1a1a1a;
+  }
 }

@@ -18,7 +18,6 @@ function Login() {
   const roles = [
     { id: 'admin', label: 'Admin' },
     { id: 'affiliate', label: 'Affiliate' },
-    { id: 'user', label: 'User' },
   ]
 
   useEffect(() => {

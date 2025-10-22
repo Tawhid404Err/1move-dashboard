@@ -14,6 +14,8 @@ function AdminDashboard() {
   const [reviewReason, setReviewReason] = useState('')
   const [reviewLoading, setReviewLoading] = useState(false)
   const [copiedLink, setCopiedLink] = useState(null) // Track which link was copied
+  const [deleteModal, setDeleteModal] = useState(null) // { affiliate }
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const userEmail = localStorage.getItem('user_email')
 
@@ -170,6 +172,46 @@ function AdminDashboard() {
     }
   }
 
+  const handleDeleteAffiliate = async () => {
+    if (!deleteModal) return
+
+    try {
+      setDeleteLoading(true)
+      setError('')
+
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        throw new Error('No authentication token found')
+      }
+
+      const response = await apiRequest(`admin/affiliates/${deleteModal.affiliate.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.')
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `Failed to delete affiliate (Status: ${response.status})`)
+      }
+
+      // Success! Close modal and refresh affiliates
+      setDeleteModal(null)
+      await fetchAffiliates()
+    } catch (err) {
+      setError(err.message)
+      if (err.message.includes('Session expired')) {
+        setTimeout(() => handleLogout(), 2000)
+      }
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('access_token')
     localStorage.removeItem('token_type')
@@ -303,7 +345,14 @@ function AdminDashboard() {
               <rect x="14" y="14" width="7" height="7" />
               <rect x="3" y="14" width="7" height="7" />
             </svg>
-            {sidebarOpen && <span className="font-medium">Analytics</span>}
+            {sidebarOpen && (
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Analytics</span>
+                <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-semibold text-gold">
+                  Coming Soon
+                </span>
+              </div>
+            )}
           </button>
         </nav>
 
@@ -515,6 +564,9 @@ function AdminDashboard() {
                       <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400">
                         Status
                       </th>
+                      <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f1f1f] bg-[#0a0a0a]">
@@ -547,6 +599,15 @@ function AdminDashboard() {
                             <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
                             Approved
                           </span>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                          <button
+                            onClick={() => setDeleteModal({ affiliate })}
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                            title="Delete affiliate"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -581,11 +642,17 @@ function AdminDashboard() {
                         <span className="text-gray-500">Language:</span>
                         <span className="text-gray-300">{affiliate.language || 'N/A'}</span>
                       </div>
-                      <div className="pt-2">
+                      <div className="flex items-center justify-between border-t border-[#1f1f1f] pt-3">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
                           <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
                           Approved
                         </span>
+                        <button
+                          onClick={() => setDeleteModal({ affiliate })}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -893,6 +960,61 @@ function AdminDashboard() {
                 }`}
               >
                 {reviewLoading ? 'Processing...' : reviewModal.approve ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#1f1f1f] bg-[#0f0f0f] p-4 shadow-2xl sm:p-6">
+            <div className="mb-4">
+              <h3 className="mb-2 text-xl font-semibold text-white">Delete Affiliate</h3>
+              <p className="text-sm text-gray-400">
+                Are you sure you want to delete this affiliate? This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Affiliate Details */}
+            <div className="mb-6 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] p-4">
+              <div className="mb-2 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-sm font-semibold text-red-400">
+                  {deleteModal.affiliate.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{deleteModal.affiliate.name}</p>
+                  <p className="text-sm text-gray-400">{deleteModal.affiliate.email}</p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Location:</span>
+                  <span className="ml-1 text-gray-300">{deleteModal.affiliate.location}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Language:</span>
+                  <span className="ml-1 text-gray-300">{deleteModal.affiliate.language}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={deleteLoading}
+                className="flex-1 rounded-lg border border-[#333333] bg-[#1a1a1a] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#252525] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAffiliate}
+                disabled={deleteLoading}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

@@ -43,14 +43,6 @@ function Login() {
     e.preventDefault()
     setError('')
 
-    // Only Admin login is integrated
-    if (selectedRole !== 'admin') {
-      alert(
-        `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} login will be available soon.`
-      )
-      return
-    }
-
     setLoading(true)
 
     try {
@@ -77,9 +69,14 @@ function Login() {
       localStorage.setItem('access_token', rawToken)
       localStorage.setItem('token_type', data.token_type)
       localStorage.setItem('user_email', formData.email)
+      localStorage.setItem('user_role', selectedRole)
 
-      // Redirect to admin dashboard
-      navigate('/admin/dashboard')
+      // Redirect based on role
+      if (selectedRole === 'admin') {
+        navigate('/admin/dashboard')
+      } else if (selectedRole === 'affiliate') {
+        navigate('/affiliate/profile')
+      }
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.')
     } finally {
